@@ -78,12 +78,12 @@ async def run_pipeline(session_id: str, message: str) -> dict:
                                           "B_rule_based_adaptation": pre_adapted, "C_final_gpt4_prompt": final_prompt,
                                           "D_final_response": final_response}
     else:
-        # [최종 업그레이드] RAG-Fusion 적용: 실패한 RAG 결과를 '영감'으로 제공
+        # RAG-Fusion 적용: 실패한 RAG 결과를 '영감'으로 제공
         inspirational_docs = [doc.get("system_response", "") for doc in expert_responses]
         final_response, final_prompt = await openai_client.create_direct_response(
             user_message=message,
             conversation_history=conversation_history,
-            inspirational_docs=inspirational_docs  # <-- 추가된 부분
+            inspirational_docs=inspirational_docs
         )
         debug_info["step6_generation"] = {"strategy": strategy, "A_final_gpt4_prompt": final_prompt,
                                           "B_final_response": final_response}
