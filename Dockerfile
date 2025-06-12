@@ -45,9 +45,9 @@ COPY . .
 # 9. 포트 노출
 EXPOSE 8000
 
-# 10. 헬스체크
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+# 10. 헬스체크 경로를 올바르게 변경
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8000/api/v1/health || exit 1
 
-# 11. [최종 수정] 운영용 서버 실행 (--preload 옵션 추가)
+# 11. 운영용 서버 실행 (타임아웃 및 프리로드 적용)
 CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--timeout", "300", "--preload", "-b", "0.0.0.0:8000", "main:app"]
