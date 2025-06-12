@@ -45,8 +45,8 @@ COPY . .
 # 9. 포트 노출
 EXPOSE 8000
 
-# 10. 헬스체크 경로를 올바르게 변경
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+# 10. [최종 수정] 헬스체크 시작 대기 시간을 모델 로딩 시간보다 넉넉하게 변경
+HEALTHCHECK --interval=60s --timeout=30s --start-period=300s --retries=3 \
     CMD curl -f http://localhost:8000/api/v1/health || exit 1
 
 # 11. 운영용 서버 실행 (타임아웃 및 프리로드 적용)
