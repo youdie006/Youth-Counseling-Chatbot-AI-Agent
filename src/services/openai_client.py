@@ -130,4 +130,4 @@ async def get_openai_client() -> OpenAIClient:
     if _openai_client_instance is None:
         _openai_client_instance = OpenAIClient()
         await _openai_client_instance.initialize()
-    return _openai_cㅎlient_instance
+    return _openai_client_instance
