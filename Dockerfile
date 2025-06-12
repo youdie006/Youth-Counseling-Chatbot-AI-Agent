@@ -23,17 +23,13 @@ WORKDIR /app
 
 # 5. 환경 변수 설정
 ENV HF_HOME=/app/cache
-ENV HF_DATASETS_CACHE=/app/cache
-ENV TRANSFORMERS_CACHE=/app/cache
 
 # 6. Python 의존성 설치
 COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 7. [최종 수정] 데이터 다운로드를 빌드 단계에서 미리 실행
-# Hugging Face CLI를 사용하여 데이터셋을 다운로드하고, 권한 문제를 해결합니다.
-# 공개 데이터셋이므로 로그인 과정은 필요 없습니다.
+# 7. 데이터 다운로드를 빌드 단계에서 미리 실행
 RUN huggingface-cli download \
     youdie006/simsimi-ai-agent-data \
     --repo-type dataset \
@@ -47,9 +43,5 @@ COPY . .
 # 9. 포트 노출
 EXPOSE 8000
 
-# 10. 헬스체크
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/v1/health || exit 1
-
-# 11. 운영용 서버(Gunicorn)로 애플리케이션 실행
+# 10. 운영용 서버(Gunicorn)로 애플리케이션 실행
 CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000", "main:app"]

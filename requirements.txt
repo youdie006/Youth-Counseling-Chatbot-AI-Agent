@@ -13,7 +13,7 @@ torch==2.0.1
 transformers==4.30.0
 
 # 🔧 HuggingFace Hub (호환성 버전 고정)
-huggingface_hub==0.20.0  # cached_download 지원 마지막 안정 버전
+huggingface_hub>=0.20.0  # cached_download 지원 마지막 안정 버전
 
 # ===========================================
 # 🗄️ Vector Database
