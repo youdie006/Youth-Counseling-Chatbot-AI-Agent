@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마음이 AI | 너의 마음을 듣는 시간</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+        :root { --accent-color: #8A2BE2; --bg-color: #f4f7f6; --font-color: #333; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg-color); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .chat-container { width: 100%; max-width: 700px; height: 95vh; max-height: 800px; background: #fff; border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+        .chat-header { background: var(--accent-color); color: white; padding: 20px; text-align: center; border-radius: 20px 20px 0 0; }
+        .chat-header h1 { font-size: 1.5rem; }
+        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; }
+        .message { display: flex; margin-bottom: 20px; align-items: flex-end; }
+        .message.user { justify-content: flex-end; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; background: #eee; margin: 0 10px; font-size: 1.5rem; display: flex; justify-content: center; align-items: center; flex-shrink: 0;}
+        .message.user .avatar { background: #dcf8c6; }
+        .message.assistant .avatar { background: #e5e5ea; }
+        .message-bubble { max-width: 70%; padding: 12px 18px; border-radius: 18px; line-height: 1.6; }
+        .message.user .message-bubble { background: var(--accent-color); color: white; border-bottom-right-radius: 4px; }
+        .message.assistant .message-bubble { background: #e5e5ea; color: var(--font-color); border-bottom-left-radius: 4px; }
+        .chat-input-container { padding: 15px; border-top: 1px solid #eee; }
+        .chat-input-wrapper { display: flex; gap: 10px; }
+        .chat-input { flex: 1; border: 2px solid #ddd; border-radius: 25px; padding: 12px 20px; font-size: 1rem; }
+        .action-button { background: var(--accent-color); color: white; border: none; border-radius: 50%; width: 48px; height: 48px; cursor: pointer; font-size: 1.5rem; flex-shrink: 0; }
+        .action-button.debug { background: #ff6b6b; }
+        .typing-indicator .message-bubble { display: flex; align-items: center; gap: 5px; }
+        .typing-dot { width: 8px; height: 8px; background-color: #aaa; border-radius: 50%; animation: typing-pulse 1.4s infinite ease-in-out both; }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing-pulse { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header"><h1>💙 마음이 AI | 너의 마음을 듣는 시간</h1></div>
+        <div class="chat-messages" id="chatMessages">
+             <div class="message assistant"><div class="avatar">🤖</div><div class="message-bubble">안녕! 나는 너의 마음을 들어줄 친구 '마음이'야.</div></div>
+             <div class="message assistant" id="typingIndicator" style="display: none;">
+                <div class="avatar">🤖</div><div class="message-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+            </div>
+        </div>
+        <div class="chat-input-container">
+            <div class="chat-input-wrapper">
+                <input type="text" class="chat-input" id="messageInput" placeholder="너의 이야기를 들려줘...">
+                <button class="action-button" id="sendButton" title="전송">➤</button>
+                <button class="action-button debug" id="openDebugButton" title="디버그 창 열기">🐞</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const openDebugButton = document.getElementById('openDebugButton');
+        const typingIndicator = document.getElementById('typingIndicator');
+
+        let debugWindow = null;
+        let sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        function displayMessage(text, sender) {
+            const avatar = sender === 'user' ? '👤' : '🤖';
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${sender}`;
+            messageEl.innerHTML = `<div class="avatar">${avatar}</div><div class="message-bubble">${text}</div>`;
+            chatMessages.appendChild(messageEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function handleSendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+            displayMessage(message, 'user');
+            messageInput.value = '';
+
+            // [최종 수정] '입력 중' 표시를 화면에 나타내기 전, 항상 맨 마지막 요소로 이동시킵니다.
+            chatMessages.appendChild(typingIndicator);
+            typingIndicator.style.display = 'flex';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            const isDebugMode = (debugWindow && !debugWindow.closed);
+            const endpoint = isDebugMode ? '/api/v1/chat/teen-chat-debug' : '/api/v1/chat/teen-chat';
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'session-id': sessionId },
+                    body: JSON.stringify({ message: message })
+                });
+                const data = await response.json();
+                displayMessage(data.response || "응답을 받지 못했습니다.", 'assistant');
+                if (isDebugMode) updateDebugWindow(data);
+            } catch (error) {
+                console.error('API 통신 오류:', error);
+                displayMessage('죄송해요, 통신 중 문제가 발생했어요.', 'bot');
+            } finally {
+                typingIndicator.style.display = 'none';
+            }
+        }
+
+        function openDebugWindow() {
+            if (debugWindow && !debugWindow.closed) { debugWindow.focus(); return; }
+            debugWindow = window.open('', 'Debug_Window', 'width=1400,height=900,scrollbars=yes,resizable=yes');
+            const debugHTML = `
+                <!DOCTYPE html><html lang="ko"><head><title>🔬 전체 과정 투명성 로그</title>
+                <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; line-height: 1.6; padding: 20px; background: #f9f9fa; color: #333; }
+                    .header { text-align: center; margin-bottom: 30px; }
+                    .header h1 { color: #8A2BE2; }
+                    .container { display: flex; gap: 20px; align-items: flex-start; }
+                    .column { flex: 1; min-width: 0; }
+                    .step { background: #fff; border: 1px solid #eef; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 15px; }
+                    .step h3, .column h2 { font-size: 1.2em; color: #8A2BE2; display: flex; align-items: center; gap: 8px; margin-top: 0; }
+                    .step-content { margin-top: 15px; }
+                    pre { background: #f0f2f5; padding: 15px; border-radius: 8px; white-space: pre-wrap; word-wrap: break-word; font-family: 'SF Mono', Consolas, monospace; font-size: 0.9em; }
+                    .diff-container { border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-top: 10px;}
+                    .diff del { background-color: #ffebe9; color: #c00; text-decoration: none; }
+                    .diff ins { background-color: #e6ffed; color: #22863a; text-decoration: none; }
+                    .react-step { border-left: 3px solid #ccc; padding-left: 15px; margin-bottom: 10px; }
+                    .react-step-thought { border-left-color: #f0ad4e; }
+                    .react-step-action { border-left-color: #5cb85c; }
+                    .react-step-observation { border-left-color: #5bc0de; }
+                </style></head><body>
+                    <div class="header"><h1>🔬 전체 과정 투명성 로그</h1></div>
+                    <div id="debug-content" class="container"></div>
+                </body></html>`;
+            debugWindow.document.write(debugHTML);
+            debugWindow.document.close();
+        }
+
+        function createDiffHtml(text1, text2) {
+            const a = text1.split(/(\s+)/); const b = text2.split(/(\s+)/);
+            const dp = Array(a.length + 1).fill(null).map(() => Array(b.length + 1).fill(0));
+            for (let i = a.length - 1; i >= 0; i--) {
+                for (let j = b.length - 1; j >= 0; j--) {
+                    if (a[i] === b[j]) dp[i][j] = 1 + dp[i+1][j+1];
+                    else dp[i][j] = Math.max(dp[i+1][j], dp[i][j+1]);
+                }
+            }
+            let i = 0, j = 0; let result = '';
+            while (i < a.length && j < b.length) {
+                if (a[i] === b[j]) { result += a[i]; i++; j++; }
+                else if (dp[i+1][j] >= dp[i][j+1]) { result += `<del>${a[i]}</del>`; i++; }
+                else { result += `<ins>${b[j]}</ins>`; j++; }
+            }
+            return `<div class="diff">${result}</div>`;
+        }
+
+        function updateDebugWindow(data) {
+            if (!debugWindow || !debugWindow.document) return;
+            const debugContentEl = debugWindow.document.getElementById('debug-content');
+
+            const escape = (str) => str ? str.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
+
+            const reactStepsHtml = (data.react_steps || []).map(step => {
+                const content = escape(step.content || '');
+                return `<div class="react-step react-step-${step.step_type}"><strong>[${step.step_type.toUpperCase()}]</strong><pre>${content}</pre></div>`;
+            }).join('');
+            const reactColumnHtml = `<div class="column"><h2>🤔 ReAct 추론 과정</h2><div class="step">${reactStepsHtml}</div></div>`;
+
+            let detailHtml = '';
+            const info = data.debug_info || {};
+            for (const [stepKey, value] of Object.entries(info)) {
+                let contentHtml = '';
+                if (stepKey === 'step4_generation' && value.strategy === 'RAG-Adaptation') {
+                     contentHtml = `<strong>전략:</strong> RAG 답변 적응<hr>
+                                   <h4>A. 원본 전문가 조언</h4> <pre>${escape(value.A_source_expert_advice)}</pre>
+                                   <h4>B. 1차 단어 변환</h4> ${createDiffHtml(value.A_source_expert_advice, value.B_rule_based_adaptation)}
+                                   <h4>C. 최종 GPT-4 프롬프트</h4> <pre>${escape(value.C_final_gpt4_prompt)}</pre>
+                                   <h4>D. 최종 생성 답변</h4> <pre style="background: var(--light-purple);">${escape(value.D_final_response)}</pre>`;
+                } else {
+                    contentHtml = `<pre>${escape(JSON.stringify(value, null, 2))}</pre>`;
+                }
+                detailHtml += `<div class="step"><h3>${stepKey.replace('step', 'Step ').replace(/_/g, ' ')}</h3><div class="step-content">${contentHtml}</div></div>`;
+            }
+            const detailColumnHtml = `<div class="column"><h2>🔍 상세 데이터 흐름</h2>${detailHtml}</div>`;
+
+            debugContentEl.innerHTML = reactColumnHtml + detailColumnHtml;
+        }
+
+        sendButton.addEventListener('click', handleSendMessage);
+        openDebugButton.addEventListener('click', openDebugWindow);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); handleSendMessage(); }
+        });
+    </script>
+</body>
+</html>
