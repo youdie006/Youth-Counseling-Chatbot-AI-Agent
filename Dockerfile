@@ -32,9 +32,8 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 7. [최종 수정] 데이터 다운로드를 빌드 단계에서 미리 실행
+# Hugging Face CLI를 사용하여 데이터셋을 다운로드하고, 권한 문제를 해결합니다.
 # 공개 데이터셋이므로 로그인 과정은 필요 없습니다.
-# ARG HF_TOKEN  <-- 이 줄 삭제
-# RUN huggingface-cli login --token $HF_TOKEN <-- 이 줄 삭제
 RUN huggingface-cli download \
     youdie006/simsimi-ai-agent-data \
     --repo-type dataset \
