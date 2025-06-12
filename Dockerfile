@@ -49,5 +49,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/api/v1/health || exit 1
 
-# 11. [최종 수정] 운영용 서버 실행 (타임아웃 시간 추가)
-CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--timeout", "300", "-b", "0.0.0.0:8000", "main:app"]
+# 11. [최종 수정] 운영용 서버 실행 (--preload 옵션 추가)
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--timeout", "300", "--preload", "-b", "0.0.0.0:8000", "main:app"]
