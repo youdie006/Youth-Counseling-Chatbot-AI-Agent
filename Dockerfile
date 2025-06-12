@@ -23,6 +23,8 @@ WORKDIR /app
 
 # 5. 환경 변수 설정
 ENV HF_HOME=/app/cache
+ENV HF_DATASETS_CACHE=/app/cache
+ENV TRANSFORMERS_CACHE=/app/cache
 
 # 6. Python 의존성 설치
 COPY requirements.txt .
@@ -43,5 +45,9 @@ COPY . .
 # 9. 포트 노출
 EXPOSE 8000
 
-# 10. 운영용 서버(Gunicorn)로 애플리케이션 실행
-CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000", "main:app"]
+# 10. 헬스체크
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/api/v1/health || exit 1
+
+# 11. [최종 수정] 운영용 서버 실행 (타임아웃 시간 추가)
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--timeout", "300", "-b", "0.0.0.0:8000", "main:app"]
