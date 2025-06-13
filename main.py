@@ -1,4 +1,4 @@
-# main.py - 환경 자동 감지 및 최적화
+# main.py - 에러 수정 버전
 
 import os
 import sys
@@ -109,6 +109,78 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+def create_default_html(file_path: str):
+    """기본 HTML 파일 생성"""
+    html_content = get_default_html()
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+
+def get_default_html() -> str:
+    """환경별 기본 HTML 반환"""
+    env_emoji = {
+        "huggingface": "🤗",
+        "local_dev": "🏠",
+        "production": "🏭",
+        "default": "🔧"
+    }
+
+    return f'''
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마음이 AI | {CONFIG['description']}</title>
+    <style>
+        body {{ font-family: 'Noto Sans KR', sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }}
+        .container {{ text-align: center; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }}
+        .title {{ color: #8A2BE2; font-size: 2rem; margin-bottom: 20px; }}
+        .env {{ color: #666; font-size: 1rem; margin-bottom: 15px; }}
+        .message {{ color: #666; font-size: 1.1rem; margin-bottom: 30px; }}
+        .status {{ padding: 10px 20px; background: #e8f5e8; color: #4a5e4a; border-radius: 8px; display: inline-block; }}
+        {"" if not CONFIG['debug'] else ".debug { background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin-top: 20px; }"}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">💙 마음이 AI</h1>
+        <div class="env">{env_emoji.get(ENVIRONMENT, "🔧")} {CONFIG['description']}</div>
+        <p class="message">청소년 공감 상담 챗봇이 곧 시작됩니다!</p>
+        <div class="status">시스템 초기화 중...</div>
+        {"" if not CONFIG['debug'] else '<div class="debug">🔧 개발 모드 - 디버그 정보 활성화</div>'}
+        <script>
+            setTimeout(() => {{
+                window.location.reload();
+            }}, 5000);
+        </script>
+    </div>
+</body>
+</html>
+    '''
+
+
+def add_demo_routes():
+    """데모용 라우터 추가 (함수 정의)"""
+
+    @app.post("/api/v1/chat/teen-chat")
+    async def demo_chat(request: dict):
+        return {
+            "response": f"안녕! 마음이가 곧 준비될 예정이야. ({ENVIRONMENT} 환경) 💙",
+            "status": "demo_mode",
+            "environment": ENVIRONMENT
+        }
+
+    @app.post("/api/v1/chat/teen-chat-enhanced")
+    async def demo_chat_enhanced(request: dict):
+        return {
+            "response": f"마음이가 준비 중이야! 조금만 기다려줘. ({ENVIRONMENT} 환경) 💙",
+            "status": "demo_mode",
+            "environment": ENVIRONMENT
+        }
+
+
 # 정적 파일 서빙 (환경별)
 if CONFIG["features"]["static_files"]:
     try:
@@ -125,7 +197,7 @@ if CONFIG["features"]["static_files"]:
     except Exception as e:
         print(f"⚠️ 정적 파일 설정 실패: {e}")
 
-# 라우터 등록 (오류 처리 포함)
+# 라우터 등록 (오류 처리 강화)
 try:
     from src.api import chat, openai, vector
 
@@ -135,6 +207,11 @@ try:
     print("✅ API 라우터 등록 완료")
 except ImportError as e:
     print(f"⚠️ API 라우터 import 실패: {e}")
+    print("🔄 데모 모드로 실행합니다.")
+    add_demo_routes()
+except Exception as e:
+    print(f"⚠️ API 라우터 등록 중 예상치 못한 오류: {e}")
+    print("🔄 데모 모드로 실행합니다.")
     add_demo_routes()
 
 
@@ -196,70 +273,6 @@ if CONFIG["features"]["debug_routes"]:
             return {"logs": logs}
         except FileNotFoundError:
             return {"logs": ["로그 파일이 없습니다."]}
-
-
-def create_default_html(file_path: str):
-    """기본 HTML 파일 생성"""
-    html_content = get_default_html()
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
-
-
-def get_default_html() -> str:
-    """환경별 기본 HTML 반환"""
-    env_emoji = {
-        "huggingface": "🤗",
-        "local_dev": "🏠",
-        "production": "🏭",
-        "default": "🔧"
-    }
-
-    return f'''
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>마음이 AI | {CONFIG['description']}</title>
-    <style>
-        body {{ font-family: 'Noto Sans KR', sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }}
-        .container {{ text-align: center; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }}
-        .title {{ color: #8A2BE2; font-size: 2rem; margin-bottom: 20px; }}
-        .env {{ color: #666; font-size: 1rem; margin-bottom: 15px; }}
-        .message {{ color: #666; font-size: 1.1rem; margin-bottom: 30px; }}
-        .status {{ padding: 10px 20px; background: #e8f5e8; color: #4a5e4a; border-radius: 8px; display: inline-block; }}
-        {"" if not CONFIG['debug'] else ".debug { background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin-top: 20px; }"}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1 class="title">💙 마음이 AI</h1>
-        <div class="env">{env_emoji.get(ENVIRONMENT, "🔧")} {CONFIG['description']}</div>
-        <p class="message">청소년 공감 상담 챗봇이 곧 시작됩니다!</p>
-        <div class="status">시스템 초기화 중...</div>
-        {"" if not CONFIG['debug'] else '<div class="debug">🔧 개발 모드 - 디버그 정보 활성화</div>'}
-        <script>
-            setTimeout(() => {{
-                window.location.reload();
-            }}, 5000);
-        </script>
-    </div>
-</body>
-</html>
-    '''
-
-
-def add_demo_routes():
-    """데모용 라우터 추가"""
-
-    @app.post("/api/v1/chat/teen-chat")
-    async def demo_chat(request: dict):
-        return {
-            "response": f"안녕! 마음이가 곧 준비될 예정이야. ({ENVIRONMENT} 환경) 💙",
-            "status": "demo_mode",
-            "environment": ENVIRONMENT
-        }
-
 
 # 환경별 실행 (스크립트로 직접 실행할 때)
 if __name__ == "__main__":
