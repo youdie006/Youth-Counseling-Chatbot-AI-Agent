@@ -1,3 +1,5 @@
+# docker-compose.yml - 로컬 개발 최적화
+
 services:
   simsimi-ai-agent:
     build:
@@ -5,26 +7,28 @@ services:
       dockerfile: Dockerfile
     container_name: simsimi_ai_agent
     ports:
-      - "8000:8000"
+      - "7860:7860"  # 허깅페이스와 동일한 포트
     volumes:
-      # 소스코드 실시간 반영 (개발용)
+      # 🔄 소스코드 실시간 반영 (개발용)
       - ./src:/app/src
       - ./scripts:/app/scripts
       - ./main.py:/app/main.py
-      # 데이터 영구 저장
+      - ./static:/app/static
+      
+      # 💾 데이터 영구 저장
       - ./data:/app/data
       - ./logs:/app/logs
-      # [추가] 캐시 데이터 영구 저장
-      # 이렇게 하면 컨테이너를 껐다 켜도 매번 모델을 새로 다운로드하지 않습니다.
       - ./cache:/app/cache
-      # 환경변수 (로컬에서만)
+      
+      # 🔑 환경변수 (로컬에서만)
       - ./.env:/app/.env:ro
     environment:
       - PYTHONPATH=/app
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
-      # [추가] Hugging Face 캐시 디렉토리 환경 변수
       - HF_HOME=/app/cache
+      - LOCAL_DEV=true           # 🏠 로컬 개발 환경 표시
+      - DEVELOPMENT_MODE=true    # 🔧 개발 모드 활성화
     env_file:
       - .env
     restart: unless-stopped
@@ -33,6 +37,37 @@ services:
     networks:
       - simsimi_network
 
+  # 🚀 프로덕션 테스트용 (옵션)
+  simsimi-production-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: simsimi_production_test
+    ports:
+      - "7861:7860"  # 다른 포트로 동시 실행
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+      - ./.env:/app/.env:ro
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - HF_HOME=/app/cache
+      - PRODUCTION=true          # 🏭 프로덕션 모드 테스트
+    env_file:
+      - .env
+    restart: unless-stopped
+    profiles:
+      - production-test  # docker-compose --profile production-test up
+    networks:
+      - simsimi_network
+
 networks:
   simsimi_network:
     driver: bridge
+
+# 사용법:
+# 개발: docker-compose up
+# 프로덕션 테스트: docker-compose --profile production-test up
