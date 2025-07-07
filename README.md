@@ -76,9 +76,9 @@ It utilizes GPT-4 Turbo and 200,000 real Korean counseling dialogues, combined w
    
 4. Build and run the service with Docker:
   ```bash
-   docker build -t youth-rag-agent .
-   docker run -d -p 7860:7860 --env-file .env youth-rag-agent'''
-
+   docker build -t youth-rag-agent.
+   docker run -d -p 7860:7860 --env-file .env youth-rag-agent
+```
 ## 🙋 Contact
 
 **Byungseung Kong**  
