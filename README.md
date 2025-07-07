@@ -27,7 +27,7 @@ It utilizes GPT-4 Turbo and 200,000 real Korean counseling dialogues, combined w
 
 ## 📑 Project Materials
 
-- [Project Presentation PDF](/report/presentation.pdf)
+- [Project Presentation PDF](/report/Presentation.pdf)
 
 ---
 
